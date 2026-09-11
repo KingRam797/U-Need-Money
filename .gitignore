@@ -10,6 +10,7 @@ paper_log.csv
 
 # Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
 .venv/
 venv/

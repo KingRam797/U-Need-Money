@@ -1,5 +1,7 @@
 # Paper Rig
 
+[![CI](https://github.com/KingRam797/U-Need-Money/actions/workflows/ci.yml/badge.svg)](https://github.com/KingRam797/U-Need-Money/actions/workflows/ci.yml)
+
 A backtesting and paper-trading harness for crypto markets. No API keys. No
 credentials. No code path that can place a real order.
 
@@ -58,6 +60,29 @@ Ctrl-C prints a session summary. Runs indefinitely.
 
 Candles cache to `market.db`, charts render to `chart_<strategy>.png`, and live
 sessions append to `paper_log.csv`. All three are gitignored — they regenerate.
+
+---
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests/
+```
+
+The demo data is drawn from a fixed seed, so the whole engine is deterministic:
+`ema_cross` over `DEMOUSDT` lands on -11.35% every time. The suite pins that
+number, and pins the three refusals the rig is built around — fills land on the
+next bar's open, every fill pays fees and slippage, and no fill can short or
+borrow.
+
+Those invariants are checked against candles that **gap**, because the seeded
+demo data is gapless by construction: each bar opens at the previous close. On
+gapless bars "next open" and "this close" are the same number, so a lookahead
+bug would slip through unnoticed.
+
+CI runs the suite on Python 3.10 through 3.13, then separately runs the exact
+commands in this README and uploads the charts they produce.
 
 ---
 
