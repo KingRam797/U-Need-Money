@@ -1,0 +1,16 @@
+# Cached market data — re-downloadable, and the demo seed is synthetic.
+market.db
+market.db-journal
+
+# Paper-trading session output
+paper_log.csv
+
+# Rendered charts (docs/ holds the committed sample)
+/chart_*.png
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
