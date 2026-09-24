@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Byte-compile every module
+        run: python -m compileall -q .
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
+  smoke:
+    name: documented commands
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install runtime dependencies only
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Exactly the commands the README tells a new user to run. No network:
+      # the demo symbol is synthetic, so this never touches Binance.
+      - name: Seed synthetic candles
+        run: python _seed_demo.py
+
+      - name: Replay every strategy and render a chart
+        run: |
+          for strategy in buy_hold ema_cross vol_targeted; do
+            echo "::group::$strategy"
+            python run.py replay --symbol DEMOUSDT --strategy "$strategy" --chart
+            echo "::endgroup::"
+          done
+
+      - name: Check the charts were written
+        run: |
+          for strategy in buy_hold ema_cross vol_targeted; do
+            test -s "chart_$strategy.png" || { echo "missing chart_$strategy.png"; exit 1; }
+          done
+          ls -la chart_*.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: charts
+          path: chart_*.png
+          if-no-files-found: error
