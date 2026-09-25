@@ -4,6 +4,8 @@ market.db-journal
 
 # Paper-trading session output
 paper_log.csv
+jev_paper.db
+jev_paper.db-*
 
 # Rendered charts (docs/ holds the committed sample)
 /chart_*.png
