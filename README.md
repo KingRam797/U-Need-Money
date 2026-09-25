@@ -2,8 +2,11 @@
 
 [![CI](https://github.com/KingRam797/U-Need-Money/actions/workflows/ci.yml/badge.svg)](https://github.com/KingRam797/U-Need-Money/actions/workflows/ci.yml)
 
-A backtesting and paper-trading harness for crypto markets. No API keys. No
-credentials. No code path that can place a real order.
+A backtesting and paper-trading harness for crypto markets. The original modes
+need no API keys or credentials. No code path can place a real order.
+
+Optional Jev paper mode uses a **TypeSafe decision API key only**. It has no
+exchange API key, authenticated exchange client, or real-order endpoint.
 
 Built to kill bad ideas cheaply.
 
@@ -41,6 +44,45 @@ python run.py live --strategy vol_targeted --interval 1m --cash 1000
 Polls for each new closed candle, marks the book, appends to `paper_log.csv`.
 Ctrl-C prints a session summary. Runs indefinitely.
 
+### Jev paper trader (one spot symbol)
+
+Install the same dependencies, then set `TYPESAFE_API_KEY` in your terminal
+(never commit it). Run a single candle check before leaving the process on:
+
+```bash
+python jev_paper.py --symbol BTCUSDT --interval 15m --cash 80 --once
+python jev_paper.py --symbol BTCUSDT --interval 15m --cash 80
+```
+
+`--cash` is simulated dollars; it does not fund or connect to an exchange.
+The existing paper broker ignores changes under $10, so a 20% position requires
+at least $50 simulated starting cash. This is a model floor, not a verified
+minimum for a future live venue.
+The default public feed is Binance US; `--market-base https://api.binance.com`
+is available where that public data endpoint works. The runner uses closed
+candles only, sends a compact feature snapshot to Jev, and simulates an allowed
+BUY/SELL at the **next** candle's open. HOLD and API failures leave the position
+as it is. A missed, stale, or wide-spread fill is canceled. It keeps a single
+portfolio and its decisions in `jev_paper.db`; restarting with the same DB
+continues it without repeating a processed candle. Use a different `--db` for
+another experiment; a DB cannot silently change symbol or interval.
+
+Default guards: at most 20% of simulated equity in one long position, spread
+at most 15 bps, $1 daily paper loss, 5% peak drawdown, 96 Jev requests and
+$0.05 accounted Jev input spend per UTC day, and 0.65 choice probability to
+change exposure. The budget counts failed attempts toward the request cap;
+input-token charges can only be measured on a successful response. The
+configured price is $0.042 per million input tokens for pinned `jev-1.13.0`.
+Review model price and market fees before using results to make decisions.
+`events` in the SQLite DB contains snapshots, probabilities, veto reasons,
+fills, and equity. These are **paper** results, not proof of an edge.
+
+The original replay strategies remain the baseline. This initial Jev mode is
+forward paper trading only; historical Jev replay, multi-asset accounting,
+broker practice integration, reconciliation, and any live exchange orders are
+separate milestones. With $80 total available, there is no reason to fund a
+trading account merely to validate the decision and risk pipeline.
+
 > Binance blocks some cloud IPs and some regions. If you get a 403 or 451,
 > run it from your own machine, or swap the base URL in `feed.py` to
 > `https://api.binance.us` (US endpoint, different symbol list).
@@ -57,6 +99,7 @@ Ctrl-C prints a session summary. Runs indefinitely.
 | `run.py` | replay and live loops. |
 | `chart.py` | four-panel PNG renderer. |
 | `_seed_demo.py` | writes synthetic `DEMOUSDT` candles so you can run offline. |
+| `jev_paper.py` | Jev choice + bounded, persistent single-symbol paper session. |
 
 Candles cache to `market.db`, charts render to `chart_<strategy>.png`, and live
 sessions append to `paper_log.csv`. All three are gitignored — they regenerate.
